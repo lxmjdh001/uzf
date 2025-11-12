@@ -47,7 +47,8 @@ class OKXTransferMonitor:
     
     def _get_headers(self, method: str, request_path: str, body: str = '') -> Dict[str, str]:
         """获取请求头"""
-        timestamp = datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+        from datetime import timezone
+        timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
         signature = self._generate_signature(timestamp, method, request_path, body)
         
         headers = {

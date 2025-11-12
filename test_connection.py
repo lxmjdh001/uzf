@@ -48,8 +48,9 @@ def test_okx_connection(api_key: str, secret_key: str, passphrase: str, is_demo:
     print("\n[测试2] 测试API签名和权限...")
     try:
         request_path = '/api/v5/account/config'
-        timestamp = datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
-        
+        from datetime import timezone
+        timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
         # 生成签名
         message = timestamp + 'GET' + request_path
         mac = hmac.new(
@@ -92,8 +93,9 @@ def test_okx_connection(api_key: str, secret_key: str, passphrase: str, is_demo:
     print("\n[测试3] 测试账单流水查询...")
     try:
         request_path = '/api/v5/account/bills?limit=1'
-        timestamp = datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
-        
+        from datetime import timezone
+        timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
         # 生成签名
         message = timestamp + 'GET' + request_path
         mac = hmac.new(

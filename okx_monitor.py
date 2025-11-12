@@ -73,7 +73,8 @@ class OKXMonitor:
         Returns:
             请求头字典
         """
-        timestamp = datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+        from datetime import timezone
+        timestamp = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
         signature = self._generate_signature(timestamp, method, request_path, body)
         
         headers = {
