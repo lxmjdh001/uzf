@@ -20,7 +20,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional
 from flask import Flask, request, jsonify
-from config_manager import ConfigManager
+from config_manager import get_db_config, get_okx_config, get_webhook_config
 
 # 禁用SSL警告
 import urllib3
@@ -628,69 +628,34 @@ def main():
     print("OKX 支付监控系统启动")
     print("="*80)
 
-    import os
-
-    # 获取数据库密码
-    db_password = os.getenv('DB_PASSWORD', '')
-    if not db_password and len(sys.argv) > 1:
-        db_password = sys.argv[1]
-
-    if not db_password:
-        print("\n错误: 未配置数据库密码!")
-        print("\n请使用以下方式之一配置:")
-        print("1. 设置环境变量: export DB_PASSWORD='your_password'")
-        print("2. 命令行参数: python3 payment_monitor.py 'your_password'")
-        print("3. 运行配置向导: python3 config_manager.py")
+    # 从配置文件加载数据库配置
+    print("\n正在加载配置文件...")
+    db_config = get_db_config()
+    if not db_config:
+        print("✗ 未找到配置文件或数据库配置!")
+        print("\n请运行配置向导创建配置文件:")
+        print("  python3 config_manager.py")
+        print("\n或者复制示例配置文件:")
+        print("  cp config.json.example config.json")
+        print("  然后编辑 config.json 填入你的配置")
         print("="*80)
         return
+    print(f"✓ 从配置文件加载数据库配置: {db_config['user']}@{db_config['host']}/{db_config['database']}")
 
-    # 连接数据库并读取配置
-    temp_db_config = {
-        'host': os.getenv('DB_HOST', 'localhost'),
-        'port': int(os.getenv('DB_PORT', '3306')),
-        'user': os.getenv('DB_USER', 'root'),
-        'password': db_password,
-        'database': os.getenv('DB_NAME', 'okx_monitor'),
-        'charset': 'utf8mb4'
-    }
-
+    # 测试数据库连接
     print("\n正在连接数据库...")
     try:
-        temp_conn = pymysql.connect(**temp_db_config)
-        temp_cursor = temp_conn.cursor()
-
-        # 读取数据库配置
-        temp_cursor.execute("SELECT config_key, config_value FROM okx_config WHERE config_type='database'")
-        db_configs = dict(temp_cursor.fetchall())
-
-        temp_cursor.close()
-        temp_conn.close()
-
-        if db_configs:
-            db_config = {
-                'host': db_configs.get('db_host', 'localhost'),
-                'port': int(db_configs.get('db_port', '3306')),
-                'user': db_configs.get('db_user', 'root'),
-                'password': db_configs.get('db_password', db_password),
-                'database': db_configs.get('db_name', 'okx_monitor'),
-                'charset': 'utf8mb4'
-            }
-            print(f"✓ 从数据库加载配置: {db_config['user']}@{db_config['host']}/{db_config['database']}")
-        else:
-            db_config = temp_db_config
-            print("✓ 使用默认配置连接数据库")
-
+        conn = pymysql.connect(**db_config)
+        conn.close()
+        print("✓ 数据库连接成功!")
     except Exception as e:
         print(f"✗ 数据库连接失败: {str(e)}")
         print("\n请检查数据库配置或运行配置向导: python3 config_manager.py")
         return
 
-    # 创建配置管理器
-    config_manager = ConfigManager(db_config)
-
     # 加载OKX配置
-    print("正在加载OKX API配置...")
-    okx_config = config_manager.get_all_okx_config()
+    print("\n正在加载OKX API配置...")
+    okx_config = get_okx_config()
     if not okx_config:
         print("✗ 未找到OKX API配置")
         print("\n请运行配置向导: python3 config_manager.py")
@@ -699,7 +664,7 @@ def main():
 
     # 加载Webhook配置
     print("正在加载Webhook配置...")
-    webhook_config = config_manager.get_webhook_config()
+    webhook_config = get_webhook_config()
     if not webhook_config:
         print("✗ 未找到Webhook配置")
         print("\n请运行配置向导: python3 config_manager.py")
