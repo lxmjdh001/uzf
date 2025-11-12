@@ -406,22 +406,12 @@ def main():
     # 首先需要数据库基本配置（可以从环境变量或配置文件读取）
     import os
 
-    # 优先从环境变量读取数据库配置
-    db_config = {
-        'host': os.getenv('DB_HOST', 'localhost'),
-        'port': int(os.getenv('DB_PORT', '3306')),
-        'user': os.getenv('DB_USER', 'root'),
-        'password': os.getenv('DB_PASSWORD', ''),
-        'database': os.getenv('DB_NAME', 'okx_monitor'),
-        'charset': 'utf8mb4'
-    }
+    # 第一步：获取数据库密码（必需）
+    db_password = os.getenv('DB_PASSWORD', '')
+    if not db_password and len(sys.argv) > 1:
+        db_password = sys.argv[1]
 
-    # 如果环境变量中没有密码，尝试从命令行参数读取
-    if not db_config['password'] and len(sys.argv) > 1:
-        db_config['password'] = sys.argv[1]
-
-    # 如果还是没有密码，提示用户
-    if not db_config['password']:
+    if not db_password:
         print("\n错误: 未配置数据库密码!")
         print("\n请使用以下方式之一配置:")
         print("1. 设置环境变量: export DB_PASSWORD='your_password'")
@@ -430,12 +420,45 @@ def main():
         print("="*80)
         return
 
-    # 测试数据库连接
+    # 第二步：尝试从数据库读取完整配置
+    # 先用默认配置连接数据库
+    temp_db_config = {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': int(os.getenv('DB_PORT', '3306')),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': db_password,
+        'database': os.getenv('DB_NAME', 'okx_monitor'),
+        'charset': 'utf8mb4'
+    }
+
     print("\n正在连接数据库...")
     try:
-        conn = pymysql.connect(**db_config)
-        conn.close()
-        print("✓ 数据库连接成功")
+        # 尝试连接并读取配置
+        temp_conn = pymysql.connect(**temp_db_config)
+        temp_cursor = temp_conn.cursor()
+
+        # 读取数据库配置
+        temp_cursor.execute("SELECT config_key, config_value FROM okx_config WHERE config_type='database'")
+        db_configs = dict(temp_cursor.fetchall())
+
+        temp_cursor.close()
+        temp_conn.close()
+
+        # 如果数据库中有配置，使用数据库中的配置
+        if db_configs:
+            db_config = {
+                'host': db_configs.get('db_host', 'localhost'),
+                'port': int(db_configs.get('db_port', '3306')),
+                'user': db_configs.get('db_user', 'root'),
+                'password': db_configs.get('db_password', db_password),
+                'database': db_configs.get('db_name', 'okx_monitor'),
+                'charset': 'utf8mb4'
+            }
+            print(f"✓ 从数据库加载配置: {db_config['user']}@{db_config['host']}/{db_config['database']}")
+        else:
+            db_config = temp_db_config
+            print("✓ 使用默认配置连接数据库")
+
     except Exception as e:
         print(f"✗ 数据库连接失败: {str(e)}")
         print("\n请检查数据库配置或运行配置向导: python3 config_manager.py")
