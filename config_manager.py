@@ -84,36 +84,38 @@ class ConfigManager:
             print(f"✗ 获取配置失败: {str(e)}")
             return default
     
-    def set_config(self, key: str, value: str, description: str = '', is_encrypted: bool = False):
+    def set_config(self, key: str, value: str, config_type: str = 'string', description: str = '', is_encrypted: bool = False):
         """
         设置配置
-        
+
         Args:
             key: 配置键
             value: 配置值
+            config_type: 配置类型 (database/okx/webhook/string)
             description: 配置描述
             is_encrypted: 是否为敏感信息
         """
         try:
             conn = pymysql.connect(**self.db_config)
             cursor = conn.cursor()
-            
+
             insert_sql = """
-            INSERT INTO okx_config (config_key, config_value, description, is_encrypted)
-            VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE 
+            INSERT INTO okx_config (config_key, config_value, config_type, description, is_encrypted)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
                 config_value = VALUES(config_value),
+                config_type = VALUES(config_type),
                 description = VALUES(description),
                 is_encrypted = VALUES(is_encrypted)
             """
-            
-            cursor.execute(insert_sql, (key, value, description, 1 if is_encrypted else 0))
+
+            cursor.execute(insert_sql, (key, value, config_type, description, 1 if is_encrypted else 0))
             conn.commit()
             cursor.close()
             conn.close()
-            
+
             return True
-            
+
         except Exception as e:
             print(f"✗ 设置配置失败: {str(e)}")
             return False
@@ -158,45 +160,44 @@ class ConfigManager:
         print("="*80)
         print("OKX API 配置向导")
         print("="*80)
-        print("\n请输入你的OKX API信息:")
-        print("提示: 输入的密钥信息不会显示在屏幕上\n")
-        
+        print("\n请输入你的OKX API信息:\n")
+
         # 输入API Key
         api_key = input("API Key: ").strip()
-        
-        # 输入Secret Key (隐藏输入)
-        secret_key = getpass.getpass("Secret Key (输入不可见): ").strip()
-        
-        # 输入Passphrase (隐藏输入)
-        passphrase = getpass.getpass("Passphrase (输入不可见): ").strip()
-        
+
+        # 输入Secret Key (可见)
+        secret_key = input("Secret Key: ").strip()
+
+        # 输入Passphrase (可见)
+        passphrase = input("Passphrase: ").strip()
+
         # 选择是否为模拟盘
         is_demo_input = input("是否为模拟盘? (y/N): ").strip().lower()
         is_demo = 'true' if is_demo_input == 'y' else 'false'
-        
+
         # 确认信息
         print("\n" + "-"*80)
         print("请确认以下信息:")
-        print(f"API Key: {api_key[:10]}...{api_key[-10:] if len(api_key) > 20 else ''}")
-        print(f"Secret Key: {'*' * 20}")
-        print(f"Passphrase: {'*' * 10}")
+        print(f"API Key: {api_key}")
+        print(f"Secret Key: {secret_key}")
+        print(f"Passphrase: {passphrase}")
         print(f"模拟盘: {'是' if is_demo == 'true' else '否'}")
         print("-"*80)
-        
+
         confirm = input("\n确认保存? (Y/n): ").strip().lower()
         if confirm == 'n':
             print("已取消配置")
             return False
-        
+
         # 保存到数据库
         print("\n正在保存配置...")
-        
+
         success = True
-        success &= self.set_config('okx_api_key', api_key, 'OKX API Key', True)
-        success &= self.set_config('okx_secret_key', secret_key, 'OKX Secret Key', True)
-        success &= self.set_config('okx_passphrase', passphrase, 'OKX API Passphrase', True)
-        success &= self.set_config('okx_is_demo', is_demo, 'OKX 是否为模拟盘', False)
-        
+        success &= self.set_config('okx_api_key', api_key, 'okx', 'OKX API Key', True)
+        success &= self.set_config('okx_secret_key', secret_key, 'okx', 'OKX Secret Key', True)
+        success &= self.set_config('okx_passphrase', passphrase, 'okx', 'OKX API Passphrase', True)
+        success &= self.set_config('okx_is_demo', is_demo, 'okx', 'OKX 是否为模拟盘', False)
+
         if success:
             print("✓ OKX API配置保存成功!")
             return True
@@ -212,32 +213,32 @@ class ConfigManager:
         print("Webhook 配置向导")
         print("="*80)
         print("\n请输入Webhook配置信息:\n")
-        
+
         # 输入Webhook URL
         webhook_url = input("Webhook URL (B服务器接收地址): ").strip()
-        
-        # 输入Webhook Secret
-        webhook_secret = getpass.getpass("Webhook Secret (签名密钥，输入不可见): ").strip()
-        
+
+        # 输入Webhook Secret (可见)
+        webhook_secret = input("Webhook Secret (签名密钥): ").strip()
+
         # 确认信息
         print("\n" + "-"*80)
         print("请确认以下信息:")
         print(f"Webhook URL: {webhook_url}")
-        print(f"Webhook Secret: {'*' * 20}")
+        print(f"Webhook Secret: {webhook_secret}")
         print("-"*80)
-        
+
         confirm = input("\n确认保存? (Y/n): ").strip().lower()
         if confirm == 'n':
             print("已取消配置")
             return False
-        
+
         # 保存到数据库
         print("\n正在保存配置...")
-        
+
         success = True
-        success &= self.set_config('webhook_url', webhook_url, 'Webhook推送地址', False)
-        success &= self.set_config('webhook_secret', webhook_secret, 'Webhook签名密钥', True)
-        
+        success &= self.set_config('webhook_url', webhook_url, 'webhook', 'Webhook推送地址', False)
+        success &= self.set_config('webhook_secret', webhook_secret, 'webhook', 'Webhook签名密钥', True)
+
         if success:
             print("✓ Webhook配置保存成功!")
             return True
@@ -272,13 +273,13 @@ def main():
     
     # 数据库配置（这个需要手动配置）
     print("\n首先，请输入MySQL数据库连接信息:\n")
-    
+
     db_host = input("数据库地址 (默认: localhost): ").strip() or 'localhost'
     db_port = input("数据库端口 (默认: 3306): ").strip() or '3306'
     db_user = input("数据库用户名 (默认: root): ").strip() or 'root'
-    db_password = getpass.getpass("数据库密码: ").strip()
+    db_password = input("数据库密码: ").strip()
     db_name = input("数据库名 (默认: okx_monitor): ").strip() or 'okx_monitor'
-    
+
     db_config = {
         'host': db_host,
         'port': int(db_port),
@@ -287,7 +288,7 @@ def main():
         'database': db_name,
         'charset': 'utf8mb4'
     }
-    
+
     # 测试数据库连接
     print("\n正在测试数据库连接...")
     try:
@@ -298,17 +299,17 @@ def main():
         print(f"✗ 数据库连接失败: {str(e)}")
         print("\n请检查数据库配置后重试")
         return
-    
+
     # 创建配置管理器
     config_manager = ConfigManager(db_config)
-    
+
     # 保存数据库配置
     print("\n正在保存数据库配置...")
-    config_manager.set_config('db_host', db_host, 'MySQL数据库地址')
-    config_manager.set_config('db_port', str(db_port), 'MySQL数据库端口')
-    config_manager.set_config('db_user', db_user, 'MySQL数据库用户名')
-    config_manager.set_config('db_password', db_password, 'MySQL数据库密码', True)
-    config_manager.set_config('db_name', db_name, 'MySQL数据库名')
+    config_manager.set_config('db_host', db_host, 'database', 'MySQL数据库地址')
+    config_manager.set_config('db_port', str(db_port), 'database', 'MySQL数据库端口')
+    config_manager.set_config('db_user', db_user, 'database', 'MySQL数据库用户名')
+    config_manager.set_config('db_password', db_password, 'database', 'MySQL数据库密码', True)
+    config_manager.set_config('db_name', db_name, 'database', 'MySQL数据库名')
     print("✓ 数据库配置已保存")
     
     # 配置OKX API
