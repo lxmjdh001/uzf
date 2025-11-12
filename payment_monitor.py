@@ -99,6 +99,8 @@ class PaymentMonitor:
                 transfer_type VARCHAR(50) NOT NULL,
                 bill_timestamp BIGINT NOT NULL,
                 bill_time DATETIME NOT NULL,
+                monitor_timestamp BIGINT,
+                monitor_time DATETIME,
                 matched_order_id VARCHAR(100),
                 matched_time DATETIME,
                 is_matched TINYINT DEFAULT 0,
@@ -172,13 +174,15 @@ class PaymentMonitor:
             
             # OKX时间戳是UTC时间，转换为本地时间用于数据库存储
             bill_time = datetime.fromtimestamp(int(bill['ts']) / 1000, tz=timezone.utc).replace(tzinfo=None)
-            # 监控时间戳（当前时间）
-            monitor_timestamp = datetime.now()
+            # 监控时间戳（当前时间，毫秒）
+            monitor_timestamp_ms = int(time.time() * 1000)
+            # 监控时间（当前时间，datetime格式）
+            monitor_time = datetime.now()
             
             insert_sql = """
             INSERT INTO okx_transfers 
-            (bill_id, amount, currency, balance, transfer_type, bill_timestamp, bill_time, monitor_timestamp)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (bill_id, amount, currency, balance, transfer_type, bill_timestamp, bill_time, monitor_timestamp, monitor_time)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE bill_id=bill_id
             """
             
@@ -190,7 +194,8 @@ class PaymentMonitor:
                 '转入' if float(bill['balChg']) > 0 else '转出',
                 int(bill['ts']),
                 bill_time,
-                monitor_timestamp
+                monitor_timestamp_ms,
+                monitor_time
             ))
             
             conn.commit()
