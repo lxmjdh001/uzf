@@ -1,220 +1,131 @@
-# OKX 账户交易资金变动监控工具
+# OKX 转账监控系统
 
-这是一个用于监控OKX交易所账户资金变动的Python脚本,可以实时监控账单流水,并在检测到资金变动时输出详细信息。
+一个完整的 OKX 转账监控解决方案，支持实时监控、Webhook推送、MySQL存储和签名验证。
 
-## 功能特点
-
-- ✅ 实时监控账户资金变动
-- ✅ 支持实盘和模拟盘
-- ✅ 显示监控时间戳、变动金额、产生时间
-- ✅ 支持按产品类型过滤(币币、杠杆、合约等)
-- ✅ 自动去重,避免重复处理
-- ✅ 详细的账单类型说明
-
-## 安装依赖
-
-```bash
-pip install requests
-```
-
-## 配置说明
-
-### 1. 创建OKX API Key
-
-1. 登录 [OKX官网](https://www.okx.com)
-2. 进入 **个人中心** -> **API管理**
-3. 点击 **创建API Key**
-4. 设置API权限(至少需要**读取**权限)
-5. 记录以下信息:
-   - API Key
-   - Secret Key (只显示一次,请妥善保管)
-   - Passphrase (创建时设置的密码)
-
-### 2. 配置脚本
-
-编辑 `okx_monitor.py` 文件,在 `main()` 函数中填入你的API信息:
-
-```python
-API_KEY = "your_api_key_here"          # 你的API Key
-SECRET_KEY = "your_secret_key_here"    # 你的Secret Key
-PASSPHRASE = "your_passphrase_here"    # 你的API密码
-IS_DEMO = False                         # True=模拟盘, False=实盘
-```
-
-### 3. 监控配置
-
-```python
-MONITOR_INTERVAL = 10  # 监控间隔(秒)
-INST_TYPE = None       # 产品类型过滤
-```
-
-**产品类型选项:**
-- `None` - 监控所有类型
-- `"SPOT"` - 仅监控币币交易
-- `"MARGIN"` - 仅监控杠杆交易
-- `"SWAP"` - 仅监控永续合约
-- `"FUTURES"` - 仅监控交割合约
-- `"OPTION"` - 仅监控期权
-
-## 使用方法
-
-### 基本使用
-
-```bash
-python okx_monitor.py
-```
-
-### 输出示例
+## 🎯 系统架构
 
 ```
-开始监控OKX账户资金变动...
-监控间隔: 10秒
-产品类型: 全部
---------------------------------------------------------------------------------
-
-================================================================================
-【资金变动监控】
-监控时间戳: 1699876543210
-监控时间: 2024-11-12 15:30:45
-账单产生时间: 2024-11-12 15:30:40
-账单时间戳: 1699876540000
-变动金额: -0.5 USDT
-当前余额: 1000.5 USDT
-交易产品: BTC-USDT
-账单类型: 交易 - 买入
-账单ID: 123456789
-================================================================================
+A服务器 (监控服务器)                    B服务器 (业务服务器)
+┌─────────────────────┐                ┌─────────────────────┐
+│  OKX API            │                │  Webhook接收器      │
+│    ↓                │   Webhook      │    ↓                │
+│  监控程序           │  =========>    │  业务逻辑处理       │
+│    ↓                │  (HMAC签名)    │    ↓                │
+│  MySQL数据库        │                │  你的业务系统       │
+└─────────────────────┘                └─────────────────────┘
 ```
 
-## 返回数据说明
+## ✨ 功能特点
 
-每次检测到资金变动时,会输出以下信息:
+- ✅ **实时监控** - 自动检测OKX账户转账流入
+- ✅ **Webhook推送** - 检测到转账后立即推送到B服务器
+- ✅ **签名验证** - HMAC-SHA256签名保证数据安全
+- ✅ **MySQL存储** - 转账记录持久化存储
+- ✅ **配置管理** - API密钥安全存储在数据库
+- ✅ **交互式配置** - 首次运行通过终端向导配置
+- ✅ **推送状态跟踪** - 记录每次Webhook推送结果
 
-| 字段 | 说明 |
-|------|------|
-| 监控时间戳 | 检测到变动的当前时间戳(毫秒) |
-| 监控时间 | 检测到变动的当前时间(格式化) |
-| 账单产生时间 | 资金变动实际发生的时间 |
-| 账单时间戳 | 资金变动实际发生的时间戳(毫秒) |
-| 变动金额 | 资金变动数量(正数=增加,负数=减少) |
-| 当前余额 | 变动后的账户余额 |
-| 交易产品 | 相关的交易产品(如BTC-USDT) |
-| 账单类型 | 变动类型(交易、划转、资金费等) |
-| 账单ID | 唯一账单标识 |
+## 🚀 快速开始
 
-## 账单类型说明
+### 1. 安装依赖
 
-脚本会自动识别并显示以下账单类型:
+\`\`\`bash
+pip3 install -r requirements.txt
+\`\`\`
 
-- **交易** - 买入/卖出/开多/开空/平多/平空
-- **划转** - 账户间资金划转
-- **资金费** - 永续合约资金费用
-- **交割** - 合约交割
-- **借币/还币** - 杠杆借币和还币
-- **利息** - 借币利息
-- **强平** - 强制平仓
-- **其他** - 其他类型的资金变动
+### 2. 准备MySQL数据库
 
-## API接口说明
+\`\`\`bash
+mysql -u root -p
+CREATE DATABASE okx_monitor CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+EXIT;
+\`\`\`
 
-本脚本使用OKX官方API v5接口:
+### 3. 运行配置向导
 
-- **账单流水查询(近7天)**: `GET /api/v5/account/bills`
-- **限速**: 6次/秒
-- **权限**: 需要API Key具有读取权限
+\`\`\`bash
+python3 config_manager.py
+\`\`\`
 
-## 注意事项
+按提示输入：
+- MySQL数据库信息
+- OKX API密钥
+- Webhook配置
 
-⚠️ **安全提示:**
-1. 请妥善保管你的API Key和Secret Key
-2. 建议只授予**读取**权限,不要授予交易和提币权限
-3. 不要将包含真实API信息的代码上传到公开仓库
-4. 建议使用IP白名单限制API访问
+### 4. 启动监控
 
-⚠️ **使用限制:**
-1. 账单流水查询接口限速为 6次/秒
-2. 默认只能查询近7天的数据
-3. 每次最多返回100条记录
+\`\`\`bash
+# 使用环境变量
+export DB_PASSWORD='your_mysql_password'
+python3 okx_webhook_monitor.py
 
-⚠️ **其他说明:**
-1. 首次运行会获取最近的账单,之后只监控新增账单
-2. 建议监控间隔不要设置太短,避免触发限速
-3. 如需查询更长时间的历史数据,可使用 `/api/v5/account/bills-archive` 接口
+# 或使用命令行参数
+python3 okx_webhook_monitor.py 'your_mysql_password'
 
-## 高级用法
+# 后台运行
+nohup python3 okx_webhook_monitor.py > monitor.log 2>&1 &
+\`\`\`
 
-### 使用配置文件
+## 📁 文件说明
 
-1. 复制配置文件示例:
-```bash
-cp config_example.py config.py
-```
+### 核心文件
 
-2. 编辑 `config.py` 填入你的API信息
+- \`okx_webhook_monitor.py\` - Webhook监控主程序
+- \`config_manager.py\` - 配置管理器（交互式配置向导）
+- \`test_connection.py\` - API连接测试工具
 
-3. 修改 `okx_monitor.py` 导入配置:
-```python
-from config import OKX_CONFIG, MONITOR_CONFIG
+### 示例和文档
 
-monitor = OKXMonitor(
-    api_key=OKX_CONFIG['api_key'],
-    secret_key=OKX_CONFIG['secret_key'],
-    passphrase=OKX_CONFIG['passphrase'],
-    is_demo=OKX_CONFIG['is_demo']
-)
-```
+- \`b_server_example.py\` - B服务器Webhook接收示例
+- \`WEBHOOK_SETUP.md\` - 完整部署文档
+- \`requirements.txt\` - Python依赖包
 
-### 自定义处理逻辑
+## 📖 详细文档
 
-你可以修改 `_process_bill()` 方法来实现自定义的处理逻辑,例如:
+查看 [WEBHOOK_SETUP.md](WEBHOOK_SETUP.md) 获取：
+- 完整部署步骤
+- 签名验证机制
+- 数据库表结构
+- 常见问题解答
 
-- 发送邮件通知
-- 写入数据库
-- 触发交易策略
-- 发送Webhook通知
+## 🔐 安全特性
 
-## 故障排查
+- ✅ API密钥加密存储在数据库
+- ✅ Webhook使用HMAC-SHA256签名
+- ✅ 签名时间戳验证（防重放攻击）
+- ✅ 敏感信息输入不显示
 
-### 1. 签名错误
+## 🔧 常用命令
 
-```
-API错误: Invalid signature
-```
+\`\`\`bash
+# 查看监控进程
+ps aux | grep okx_webhook_monitor
 
-**解决方法:**
-- 检查API Key、Secret Key和Passphrase是否正确
-- 确认系统时间准确(误差不超过30秒)
+# 查看日志
+tail -f monitor.log
 
-### 2. 权限错误
+# 重新配置
+python3 config_manager.py
 
-```
-API错误: Permission denied
-```
+# 查看转账记录
+mysql -u root -p okx_monitor -e "SELECT * FROM okx_transfers ORDER BY id DESC LIMIT 10;"
+\`\`\`
 
-**解决方法:**
-- 确认API Key具有读取权限
-- 检查IP白名单设置
+## 📊 数据库表
 
-### 3. 限速错误
+### okx_config - 配置表
+存储API密钥、Webhook配置等
 
-```
-API错误: Rate limit exceeded
-```
+### okx_transfers - 转账记录表
+存储所有检测到的转账记录和推送状态
 
-**解决方法:**
-- 增加监控间隔时间
-- 减少每次查询的记录数量
+## ⚠️ 安全提示
 
-## 参考文档
+- 不要将数据库密码提交到Git
+- 定期更换API密钥和Webhook密钥
+- 使用只读权限的API Key（如果只需要监控）
+- 生产环境使用HTTPS
 
-- [OKX API官方文档](https://www.okx.com/docs-v5/zh/)
-- [账单流水查询接口](https://www.okx.com/docs-v5/zh/#trading-account-rest-api-get-bills-details-last-7-days)
-
-## 许可证
+## �� 许可证
 
 MIT License
-
-## 免责声明
-
-本工具仅供学习和研究使用,使用本工具进行交易的风险由使用者自行承担。作者不对使用本工具造成的任何损失负责。
-
