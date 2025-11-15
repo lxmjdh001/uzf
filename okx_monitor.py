@@ -134,7 +134,7 @@ class OKXMonitor:
 
         filtered = [
             t for t in transfers
-            if t.get('monitor_timestamp', 0) >= cutoff_time
+            if t.get('bill_timestamp', 0) / 1000 >= cutoff_time  # bill_timestamp是毫秒，需要转换为秒
         ]
 
         removed_count = len(transfers) - len(filtered)
