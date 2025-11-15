@@ -1,20 +1,17 @@
 {
-  "database": {
-    "host": "localhost",
-    "port": 3306,
-    "user": "root",
-    "password": "your_password",
-    "database": "okx_monitor"
-  },
   "okx": {
-    "api_key": "your_api_key",
-    "secret_key": "your_secret_key",
-    "passphrase": "your_passphrase",
+    "api_key": "your_okx_api_key",
+    "secret_key": "your_okx_secret_key",
+    "passphrase": "your_okx_passphrase",
     "is_demo": false
   },
-  "webhook": {
-    "url": "http://your_b_server:port/webhook",
-    "secret": "your_webhook_secret"
+  "monitor": {
+    "interval": 10,
+    "json_file": "okx_transfers.json"
+  },
+  "query_api": {
+    "host": "0.0.0.0",
+    "port": 6000,
+    "secret": "your_query_api_secret_key_change_this"
   }
 }
-
